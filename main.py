@@ -1,109 +1,367 @@
-import os
-import threading
-from http.server import SimpleHTTPRequestHandler, HTTPServer
-import telebot
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from aiogram.utils import executor
 
-# 1. ЗАПУСК ВСТРОЕННОГО САЙТА (ТВОЙ HTML КОД)
-html_content = """
-<!DOCTYPE html>
+API_TOKEN = '8908913545:AAFqVtBWMZNTrJQKGJxDPyi3wsSHC9iv77Y'
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
+
+@dp.message_handler(commands=['start'])
+async def send_welcome(message: types.Message):
+    # Текст приветствия, который вы просили добавить
+    welcome_text = (
+        "Здравствуй мой друг, ты попал в крипто бота основного на компании @send, "
+        "данная компания полностью дала разрешение и подтвердила что данный бот "
+        "не нарушает правил платформы телеграмма, а также не занимается мошенической схемой."
+    )
+    
+    # Кнопка для открытия Web App с вашей ссылкой на Render
+    keyboard = InlineKeyboardMarkup().add(
+        InlineKeyboardButton(
+            text="🚀 Запустить приложение", 
+            web_app=WebAppInfo(url="https://my-tg-bot-ef0y.onrender.com")
+        )
+    )
+    
+    await message.reply(welcome_text, reply_markup=keyboard)
+
+if __name__ == '__main__':
+    executor.start_polling(dp, skip_updates=True)
+    <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Крипто-Кошелек и 1win Ракетка</title>
-    <script src="https://telegram.org"></script>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: #0e1621; color: #fff; margin: 0; padding: 15px; user-select: none; }
-        .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid #24303f; }
-        .user-info { display: flex; align-items: center; gap: 10px; }
-        .avatar { width: 40px; height: 40px; border-radius: 50%; background: #2481cc; display: flex; align-items: center; justify-content: center; font-weight: bold; overflow: hidden; }
-        .balance-card { background: linear-gradient(135deg, #2481cc, #1a5a96); padding: 20px; border-radius: 12px; margin: 15px 0; text-align: center; }
-        .balance-amount { font-size: 32px; font-weight: bold; margin-top: 5px; color: #fff; }
-        .crash-container { background: #17212b; border-radius: 12px; padding: 15px; margin-top: 20px; text-align: center; border: 1px solid #24303f; }
-        .game-screen { height: 160px; background: #0b1118; border-radius: 8px; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; margin-bottom: 15px; }
-        .multiplier { font-size: 46px; font-weight: bold; color: #4bc658; z-index: 10; }
-        .rocket { position: absolute; bottom: 10px; left: 10px; font-size: 34px; transition: all 0.1s linear; }
-        .input-box { width: 85%; padding: 10px; margin: 10px 0; border-radius: 6px; border: 1px solid #24303f; background: #0e1621; color: white; text-align: center; }
-        .btn { background: #2481cc; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; width: 90%; font-size: 16px; }
-        .btn.btn-claim { background: #4bc658; }
-    </style>
+    <title>Crypto Wallet App</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <div class="header">
-        <div class="user-info"><div class="avatar" id="user-avatar">?</div><div id="username">Загрузка...</div></div>
-        <div style="color: #2481cc; font-weight: bold; font-size: 14px;">Крипто Бот</div>
-    </div>
-    <div class="balance-card">
-        <div style="opacity: 0.8; font-size: 14px;">Доступный баланс</div>
-        <div class="balance-amount">100.00 USD</div>
-    </div>
-    <div class="crash-container">
-        <h3 style="margin-top: 0; color: #2481cc; font-size: 18px; text-align: left;">🚀 1WIN CRASH (Ракетка)</h3>
-        <div class="game-screen" id="screen">
-            <div class="multiplier" id="mult-text">1.00x</div>
-            <div class="rocket" id="rocket-obj">🚀</div>
+<body class="dark-theme">
+
+    <!-- Шапка приложения -->
+    <header class="header">
+        <div class="user-info">
+            <div class="avatar">?</div>
+            <span class="status">Загрузка...</span>
         </div>
-        <input type="number" id="bet-amount" class="input-box" value="10">
-        <button class="btn" id="action-btn" onclick="startGame()">СТАРТ</button>
+        <button class="settings-btn" onclick="toggleSettings()">⚙️</button>
+    </header>
+
+    <!-- Основной контейнер кошелька (Стиль Tonkeeper) -->
+    <main class="wallet-container">
+        <div class="balance-card">
+            <p class="balance-label">Доступный баланс</p>
+            <!-- Бесконечный баланс, как заказывали -->
+            <h1 class="balance-amount">∞ USD</h1> 
+        </div>
+
+        <!-- Кнопки действий прямо под балансом -->
+        <div class="action-buttons">
+            <button class="action-btn"><span>➕</span>Пополнить</button>
+            <button class="action-btn"><span>📤</span>Вывести</button>
+            <button class="action-btn" onclick="openP2P()"><span>🤝</span>P2P Маркет</button>
+        </div>
+
+        <!-- Курс валют -->
+        <div class="crypto-rates">
+            <div class="rate-item">
+                <span class="coin">💎 TON</span>
+                <span class="price">$5.42</span>
+            </div>
+            <div class="rate-item">
+                <span class="coin">🪙 BTC</span>
+                <span class="price">$64,250</span>
+            </div>
+        </div>
+
+        <!-- Блок игры 1WIN CRASH (Ракетка) -->
+        <section class="crash-game">
+            <h2 class="game-title">🚀 1WIN CRASH (Ракетка)</h2>
+            <div class="game-screen">
+                <div class="multiplier" id="multiplier">1.00x</div>
+                <div class="rocket" id="rocket">🚀</div>
+            </div>
+            <div class="bet-controls">
+                <input type="number" class="bet-input" value="10" min="1">
+                <button class="start-btn" onclick="startRocket()">СТАРТ</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Модальное окно настроек -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <h3>Настройки</h3>
+            <div class="setting-row">
+                <label>Язык:</label>
+                <select><option>Русский</option><option>English</option></select>
+            </div>
+            <div class="setting-row">
+                <label>Валюта:</label>
+                <select><option>USD</option><option>RUB</option><option>EUR</option></select>
+            </div>
+            <div class="setting-row">
+                <label>Тема:</label>
+                <select id="themeSelect" onchange="changeTheme()">
+                    <option value="dark">Темная</option>
+                    <option value="light">Светлая</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Номер телефона:</label>
+                <input type="tel" placeholder="+7 (999) 000-00-00">
+            </div>
+            <button class="close-btn" onclick="toggleSettings()">Закрыть</button>
+        </div>
     </div>
-    <script>
-        const tg = window.Telegram.WebApp; tg.expand();
-        const user = tg.initDataUnsafe?.user;
-        if (user) { document.getElementById('username').innerText = user.username ? '@' + user.username : user.first_name; }
-        let gameInterval, currentMultiplier = 1.00, crashPoint = 0, isRunning = false, betValue = 0;
-        function startGame() {
-            if (isRunning) return;
-            betValue = parseFloat(document.getElementById('bet-amount').value);
-            isRunning = true; currentMultiplier = 1.00; crashPoint = (Math.random() * 3.45 + 1.05).toFixed(2);
-            const btn = document.getElementById('action-btn'); btn.className = "btn btn-claim"; btn.innerText = "ЗАБРАТЬ ВЫИГРЫШ"; btn.setAttribute("onclick", "claimWin()");
-            gameInterval = setInterval(() => {
-                currentMultiplier += 0.04; document.getElementById('mult-text').innerText = currentMultiplier.toFixed(2) + "x";
-                if (currentMultiplier >= crashPoint) endGame(false);
-            }, 100);
-        }
-        function claimWin() { if (isRunning) endGame(true); }
-        function endGame(isWin) {
-            clearInterval(gameInterval); isRunning = false;
-            const btn = document.getElementById('action-btn'); btn.className = "btn"; btn.innerText = "СТАРТ"; btn.setAttribute("onclick", "startGame()");
-            if (isWin) { document.getElementById('mult-text').innerText = "УСПЕЛ! " + currentMultiplier.toFixed(2) + "x"; }
-            else { document.getElementById('mult-text').innerText = "💥 ВЗРЫВ!"; }
-            tg.sendData(JSON.stringify({ action: "casino_result", bet: betValue, profit: isWin ? (betValue * currentMultiplier) : 0 }));
-        }
-    </script>
+
+    <script src="script.js"></script>
 </body>
 </html>
-"""
 
-with open("index.html", "w", encoding="utf-8") as f:
-    f.write(html_content)
+:root {
+    --bg-color: #0b141c;
+    --card-bg: #16222f;
+    --accent-blue: #2481cc;
+    --text-main: #ffffff;
+    --text-muted: #7e8b98;
+    --green: #2ecc71;
+}
 
-def run_server():
-    port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
-    print(f"Сервер сайта запущен на порту {port}")
-    server.serve_forever()
+.light-theme {
+    --bg-color: #f0f4f8;
+    --card-bg: #ffffff;
+    --accent-blue: #1a73e8;
+    --text-main: #1c1c1c;
+    --text-muted: #5f6368;
+}
 
-threading.Thread(target=run_server, daemon=True).start()
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
 
-# 2. ЗАПУСК ЛОГИКИ ТЕЛЕГРАМ БОТА
-TOKEN = "8908913545:AAFqVtBWMZNTrJQKGJxDPyi3wsSHC9iv77Y"
-bot = telebot.TeleBot(TOKEN)
+/* Шапка */
+.header {
+    width: 100%;
+    max-width: 450px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    box-sizing: border-box;
+}
 
-# ТВОЕ ОРИГИНАЛЬНОЕ ПРИВЕТСТВИЕ
-text = "Приветствую тебя друг, ты попал в моего крипто бота ⌚, бот полностью верифицирован компанией @send, и не относится к ск@м схемам, все платежи покупки и продажи полностью безопасны в этом кругу. Удачного пользования"
+.user-info { display: flex; align-items: center; gap: 10px; }
+.avatar { background: var(--accent-blue); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.settings-btn { background: none; border: none; font-size: 20px; cursor: pointer; }
 
-@bot.message_handler(commands=['start'])
-def start(msg):
-    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+/* Кошелек */
+.wallet-container {
+    width: 100%;
+    max-width: 450px;
+    padding: 10px 15px;
+    box-sizing: border-box;
+}
+
+.balance-card {
+    background: linear-gradient(135deg, #1d3557, var(--accent-blue));
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 15px;
+}
+.balance-label { color: rgba(255,255,255,0.7); font-size: 14px; margin: 0; }
+.balance-amount { font-size: 32px; margin: 5px 0 0 0; }
+
+/* Кнопки действий */
+.action-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.action-btn {
+    flex: 1;
+    background: var(--card-bg);
+    border: none;
+    color: var(--text-main);
+    padding: 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+/* Курсы */
+.crypto-rates {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 20px;
+}
+.rate-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.rate-item:last-child { border: none; }
+
+/* Игра Ракетка */
+.crash-game {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 15px;
+}
+.game-title { font-size: 16px; color: var(--accent-blue); margin-top: 0; }
+.game-screen {
+    background: #090f16;
+    height: 180px;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.multiplier { font-size: 42px; color: var(--green); font-weight: bold; z-index: 2; }
+.rocket {
+    font-size: 35px;
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    transition: transform 0.1s linear;
+}
+
+/* Элементы управления ставкой */
+.bet-controls { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+.bet-input {
+    background: #090f16;
+    border: 1px solid #233549;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 16px;
+}
+.start-btn {
+    background: var(--accent-blue);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+/* Настройки (Модальное окно) */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+.modal-content {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 16px;
+    width: 85%;
+    max-width: 350px;
+}
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+.setting-row select, .setting-row input {
+    background: #090f16;
+    border: 1px solid #233549;
+    color: white;
+    padding: 6px;
+    border-radius: 6px;
+}
+.close-btn { width: 100%; padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 8px; cursor: pointer; }
+// Переключение окна настроек
+function toggleSettings() {
+    const modal = document.getElementById('settingsModal');
+    modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+}
+
+// Смена темы (Светлая / Темная)
+function changeTheme() {
+    const theme = document.getElementById('themeSelect').value;
+    if (theme === 'light') {
+        document.body.classList.remove('dark-theme');
+        document.body.classList.add('light-theme');
+    } else {
+        document.body.classList.remove('light-theme');
+        document.body.classList.add('dark-theme');
+    }
+}
+
+// Заглушка для P2P-маркета
+function openP2P() {
+    alert("Открытие P2P Маркета: здесь пользователи смогут размещать свои объявления об обмене.");
+}
+
+// Логика полета ракетки
+let gameInterval;
+function startRocket() {
+    // Сброс позиций перед стартом
+    clearInterval(gameInterval);
+    const rocket = document.getElementById('rocket');
+    const multiplierText = document.getElementById('multiplier');
     
-    # Render автоматически подставит имя твоего сервиса сюда
-    RENDER_EXTERNAL_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://my-tg-bot-ef0y.onrender.com")
-    web_app_url = f"{RENDER_EXTERNAL_URL}/index.html"
-    
-    kb.add(KeyboardButton(text="Открыть кошелек 🚀", web_app=WebAppInfo(url=web_app_url)))
-    bot.send_message(msg.chat.id, text, reply_markup=kb)
+    let currentMultiplier = 1.00;
+    let posX = 10;
+    let posY = 10;
 
-if __name__ == '__main__':
-    print("Бот погнал слушать команды...")
-    bot.infinity_polling()
+    rocket.style.transform = `translate(0px, 0px) rotate(0deg)`;
+
+    // Случайный момент взрыва ракетки (от 1.1 до 5.0x)
+    const crashPoint = (Math.random() * 4 + 1.1).toFixed(2);
+
+    gameInterval = setInterval(() => {
+        currentMultiplier += 0.02;
+        multiplierText.innerText = currentMultiplier.toFixed(2) + 'x';
+
+        // Движение ракетки по диагонали вверх
+        if (posX < 220) posX += 1.5;
+        if (posY < 100) posY += 1.0;
+        
+        rocket.style.bottom = `${10 + posY}px`;
+        rocket.style.left = `${10 + posX}px`;
+        rocket.style.transform = `rotate(-15deg)`; // Наклон при полете
+
+        // Проверка на краш (взрыв)
+        if (currentMultiplier >= crashPoint) {
+            clearInterval(gameInterval);
+            multiplierText.style.color = '#e74c3c';
+            multiplierText.innerText = `ВЗРЫВ: ${currentMultiplier.toFixed(2)}x`;
+            rocket.style.transform = `scale(0) rotate(0deg)`; // Исчезновение
+            
+            // Возврат в исходное состояние через 2 секунды
+            setTimeout(() => {
+                multiplierText.style.color = '#2ecc71';
+                multiplierText.innerText = '1.00x';
+                rocket.style.bottom = '10px';
+                rocket.style.left = '10px';
+                rocket.style.transform = `scale(1) rotate(0deg)`;
+            }, 2000);
+        }
+    }, 50);
+}
