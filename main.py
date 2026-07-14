@@ -98,7 +98,7 @@ def start(msg):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     
     # Render автоматически подставит имя твоего сервиса сюда
-    RENDER_EXTERNAL_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://onrender.com")
+    RENDER_EXTERNAL_URL = os.environ.get("RENDER_EXTERNAL_URL", "https://my-tg-bot-ef0y.onrender.com")
     web_app_url = f"{RENDER_EXTERNAL_URL}/index.html"
     
     kb.add(KeyboardButton(text="Открыть кошелек 🚀", web_app=WebAppInfo(url=web_app_url)))
